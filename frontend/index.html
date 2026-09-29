@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expense Tracker</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      :root {
+        --accent: #7c3aed;
+      }
+
+      .amount-input {
+        position: relative;
+      }
+
+      .amount-input span {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+      }
+
+      .amount-input input {
+        padding-left: 26px;
+      }
+
+      /* Spending by category: one series, one hue, sorted largest first. */
+      .bars {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr) max-content;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        cursor: default;
+      }
+
+      .bar-row:hover {
+        background: var(--surface-2);
+      }
+
+      .bar-name {
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-mark {
+        height: 12px;
+        min-width: 3px;
+        background: var(--accent);
+        border-radius: 0 4px 4px 0;
+      }
+
+      .bar-value {
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        min-width: 130px;
+      }
+
+      .bar-value .muted {
+        display: inline-block;
+        width: 40px;
+      }
+
+      @media (max-width: 520px) {
+        .bar-row {
+          grid-template-columns: 80px minmax(0, 1fr) max-content;
+          gap: 8px;
+          padding: 7px 4px;
+        }
+
+        .bar-value {
+          min-width: 0;
+        }
+
+        .bar-value .muted {
+          width: 34px;
+        }
+      }
+
+      tfoot td {
+        font-weight: 650;
+        border-top: 2px solid var(--border);
+        border-bottom: none;
+      }
+
+      .filter {
+        width: auto;
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+
+      td.desc {
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+              <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+            </svg>
+          </div>
+          <div>
+            <h1>Expense Tracker</h1>
+            <p>A tamper-proof spending ledger on the blockchain</p>
+          </div>
+        </div>
+        <div class="wallet">
+          <select id="networkSelect" hidden aria-label="Network"></select>
+          <span id="networkBadge" class="chip"></span>
+          <button id="connectBtn" class="btn">Connect wallet</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div id="notDeployed" class="banner" hidden>
+        <strong>The contract is not deployed yet.</strong> In the <code>05-expense-tracker</code> folder run
+        <code>npm run deploy:monad</code> (or <code>npm run deploy:local</code> for a local demo), then reload this page.
+      </div>
+
+      <section class="stats" aria-label="Spending summary">
+        <div class="stat"><div class="stat-label">Total spent</div><div class="stat-value" id="statTotal">–</div><div class="stat-note">from getTotal() on-chain</div></div>
+        <div class="stat"><div class="stat-label">This month</div><div class="stat-value" id="statMonth">–</div><div class="stat-note" id="statMonthName"></div></div>
+        <div class="stat"><div class="stat-label">Expenses recorded</div><div class="stat-value" id="statCount">–</div></div>
+        <div class="stat"><div class="stat-label">Top category</div><div class="stat-value" id="statTop" style="font-size:20px;margin-top:4px">–</div><div class="stat-note" id="statTopNote"></div></div>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Add an expense</h2>
+              <p class="sub">Records cannot be edited or deleted once saved.</p>
+            </div>
+          </div>
+          <form id="expenseForm" autocomplete="off">
+            <div class="field">
+              <label for="description">Description</label>
+              <input id="description" required placeholder="e.g. Lunch at canteen" />
+              <div class="counter" id="descriptionCounter"></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="amount">Amount</label>
+                <div class="amount-input">
+                  <span aria-hidden="true">₹</span>
+                  <input id="amount" required inputmode="decimal" placeholder="0.00" pattern="\d+(\.\d{1,2})?" title="A number with up to 2 decimals, e.g. 250 or 250.75" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="category">Category</label>
+                <select id="category" required></select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="date">Date</label>
+              <input id="date" type="date" required />
+            </div>
+            <button class="btn btn-block" type="submit" id="addBtn">Add expense</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Spending by category</h2>
+              <p class="sub">Share of your total, largest first.</p>
+            </div>
+          </div>
+          <div id="breakdown"></div>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-head">
+            <h2>Expense history</h2>
+            <div class="actions">
+              <select id="filter" class="filter" aria-label="Filter by category"></select>
+              <button class="btn btn-secondary btn-small" id="refreshBtn" type="button">Refresh</button>
+            </div>
+          </div>
+          <div id="history"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div id="contractInfo"></div>
+    </footer>
+
+    <script src="vendor/ethers.umd.min.js"></script>
+    <script src="contract-config.js"></script>
+    <script src="common.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

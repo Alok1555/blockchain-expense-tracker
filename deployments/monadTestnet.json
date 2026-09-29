@@ -1,0 +1,10 @@
+{
+  "contractName": "ExpenseTracker",
+  "network": "monadTestnet",
+  "address": "0x44d4566C27F9DBb1f9BF9799BA602eFa97C1E07E",
+  "deployer": "0xff6Dc1aF40c77D757a9517f861abF00E9010d912",
+  "transactionHash": "0xca34d07c0c8a5dd20f2e6500583fad219759f583a6ea302741a6a1462108c124",
+  "blockNumber": 66671783,
+  "constructorArgs": [],
+  "deployedAt": "2026-09-29T11:06:02.069Z"
+}
